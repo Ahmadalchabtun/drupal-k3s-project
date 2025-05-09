@@ -1,0 +1,64 @@
+name: CI/CD Pipeline for Drupal and MySQL on Kubernetes
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Clean up previous deployments
+        run: |
+          helm uninstall mysql -n drupal || true
+          helm uninstall drupal -n drupal || true
+          kubectl delete pvc -n drupal --all || true
+
+      - name: Install MySQL with Helm
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+          helm upgrade --install mysql bitnami/mysql \
+            --set primary.nodeSelector."kubernetes.io/hostname"=node2 \
+            --set architecture=standalone \
+            --set auth.database=drupal \
+            --set auth.username=drupal \
+            --set auth.password=drupalpass \
+            --set primary.persistence.storageClass=longhorn \
+            --set primary.persistence.size=10Gi \
+            --set primary.service.type=NodePort \
+            --set primary.service.nodePorts.mysql=30306 \
+            --namespace drupal --create-namespace
+
+      - name: Install Drupal with Helm
+        run: |
+          helm upgrade --install drupal bitnami/drupal \
+            --set global.storageClass=longhorn \
+            --set mysql.host=mysql.drupal.svc.cluster.local \
+            --set mysql.user=drupal \
+            --set mysql.password=drupalpass \
+            --set mysql.database=drupal \
+            --set service.type=NodePort \
+            --set service.nodePort=32582 \
+            --namespace drupal
+
+      - name: Check if Drupal and MySQL pods are running
+        run: |
+          sleep 30
+          kubectl get pods -n drupal
+          kubectl get pods -n drupal | grep drupal | grep Running || exit 1
+          kubectl get pods -n drupal | grep mysql | grep Running || exit 1
