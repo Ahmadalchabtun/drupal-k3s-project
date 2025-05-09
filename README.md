@@ -7,7 +7,7 @@ Dit is een schaalbaar en veilig platform voor Drupal-websites, draaiend op Kuber
 1. Clone deze repository: `git clone https://github.com/Ahmadalchabtun/drupal-k3s-project.git`
 2. Ga naar de map: `cd drupal-k3s-project`
 3. Deploy de applicatie op je k3s-cluster (zie de Kubernetes-configuraties in deze repository).
-4. Ga naar `http://<jouw-ip>` om de Drupal-site te zien.
+4. Ga naar  om de Drupal-site te zien.
 
 ## Services
 
