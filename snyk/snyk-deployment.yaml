@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: snyk-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snyk-scanner
+  namespace: snyk-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snyk-scanner
+  template:
+    metadata:
+      labels:
+        app: snyk-scanner
+    spec:
+      containers:
+        - name: snyk
+          image: snyk/snyk-cli:docker
+          command: ["sleep", "infinity"]
+          env:
+            - name: SNYK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: snyk-token
+                  key: token
